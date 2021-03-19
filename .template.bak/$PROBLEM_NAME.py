@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 
 
-def get_vals(s):
-    return list(map(int, s.strip().split()))
-
-
 def process(case):
     pass
 
