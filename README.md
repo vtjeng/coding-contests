@@ -1,5 +1,9 @@
 # coding-contests
 
+Template-based approach cribbed from [ecnerwala](https://github.com/ecnerwala); see [make_prob.sh](https://gist.github.com/ecnerwala/ffc9b8c3f61e87ca043393a135d7794d#file-make_prob-sh), [Makefile](https://gist.github.com/ecnerwala/a3c6332ac626bc448165).
+
+## Getting Started
+
 ```sh
 $ ./make_prob.sh folder/to/my/new/problem
 Running setup
