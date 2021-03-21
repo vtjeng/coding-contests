@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+
+
+from collections import defaultdict
+import bisect
+import copy
+
+from itertools import chain, combinations
+
+
+def powerset(iterable):
+    "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
+    s = list(iterable)
+    return chain.from_iterable(combinations(s, r) for r in range(len(s) + 1))
+
+
+def get_vals(s):
+    return list(map(int, s.strip().split()))
+
+
+def get_after(xs, x):
+    assert x not in xs
+    # print(f"xs: {xs}, x: {x}")
+    xs_sorted = sorted(xs)
+    return xs_sorted[bisect.bisect(xs_sorted, x) :]
+
+
+def compute_cost(paid_cells_by_step, costs):
+    return sum(costs[i][j] for i, j in paid_cells_by_step)
+
+
+def _process(
+    missing_cells, missing_cols_in_row, missing_rows_in_col, costs, cells_removed
+):
+    missing_cells = copy.deepcopy(missing_cells)
+    missing_cols_in_row = copy.deepcopy(missing_cols_in_row)
+    missing_rows_in_col = copy.deepcopy(missing_rows_in_col)
+
+    def remove(cell):
+        missing_cells.remove(cell)
+        i, j = cell
+        missing_cols_in_row[i].remove(j)
+        missing_rows_in_col[j].remove(i)
+
+    def simplify():
+        prev_num_cells_removed = -1
+        cells_removed = []
+        while len(cells_removed) > prev_num_cells_removed:
+            prev_num_cells_removed = len(cells_removed)
+            for row_id in set(missing_cols_in_row):
+                col_ids = missing_cols_in_row[row_id]
+                if len(col_ids) == 1:
+                    i, j = row_id, list(col_ids)[0]
+                    remove((i, j))
+                    # missing_cells.remove((i, j))
+                    # missing_rows_in_col[j].remove(i)
+                    cells_removed.append((i, j))
+                # this is a performance improvement
+                if len(col_ids) <= 1:
+                    del missing_cols_in_row[row_id]
+            for col_id in set(missing_rows_in_col):
+                row_ids = missing_rows_in_col[col_id]
+                if len(row_ids) == 1:
+                    i, j = list(row_ids)[0], col_id
+                    remove((i, j))
+                    # missing_cells.remove((i, j))
+                    # missing_cols_in_row[i].remove(j)
+                    cells_removed.append((i, j))
+                if len(row_ids) <= 1:
+                    del missing_rows_in_col[col_id]
+        return cells_removed
+
+    for paid_cell in cells_removed:
+        remove(paid_cell)
+    simplify()
+    if len(missing_cells) == 0:
+        return compute_cost(cells_removed, costs)
+    return float("inf")
+
+
+def process(missing_cells, missing_cols_in_row, missing_rows_in_col, costs):
+    min_cost = float("inf")
+    for paid_cells in powerset(missing_cells):
+        min_cost = min(
+            min_cost,
+            _process(
+                missing_cells,
+                missing_cols_in_row,
+                missing_rows_in_col,
+                costs,
+                paid_cells,
+            ),
+        )
+    return min_cost
+
+
+## Comment out the appropriate option
+# Option A: Multiple lines per case
+num_cases = int(input())
+for case_id in range(num_cases):
+    n = int(input())
+    missing_cells = set()
+    # missing_cols_in_row[row_id] contains ids of columns that have -1 in A'
+    missing_cols_in_row = defaultdict(set)
+    missing_rows_in_col = defaultdict(set)
+    costs = []
+    for i in range(n):
+        for j, e in enumerate(get_vals(input())):
+            if e == -1:
+                missing_cells.add((i, j))
+                missing_cols_in_row[i].add(j)
+                missing_rows_in_col[j].add(i)
+    for i in range(n):
+        costs.append(get_vals(input()))
+    # row checksums
+    input()
+    # column checksums
+    input()
+    print(
+        f"Case #{case_id+1}: {process(missing_cells, missing_cols_in_row, missing_rows_in_col, costs)}"
+    )
