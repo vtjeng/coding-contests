@@ -10,6 +10,7 @@ from collections import Counter
 
 # courtesy https://stackoverflow.com/a/14981125/1404966
 def eprint(*args, **kwargs):
+    pass
     print(*args, file=sys.stderr, **kwargs)
 
 
@@ -51,36 +52,33 @@ def get_best_answer_and_score(solutions, num_questions):
         # just go with the better student
         return sorted(solutions, key=lambda x: x[1], reverse=True)[0]
     if num_students == 3:
-        sol1, sol2, sol3 = sorted(solutions, key=lambda x: x[1], reverse=True)
-        answer_1, score_1 = sol1
-        answer_2, score_2 = sol2
-        answer_3, score_3 = sol3
+        # students are indexed 1 through 3
+        score = dict()  # Dict[int, int]
+        answer = dict()  # Dict[int, List[bool]]
+        for i, solution in enumerate(solutions):
+            answer[i + 1], score[i + 1] = solution
 
-        score = dict()
-        score[1] = score_1
-        score[2] = score_2
-        score[3] = score_3
-        # None if all students agreed
-        minority_student = []
+        # Stores the student in the minority for each problem
+        # None if all the students agreed
+        minority_student_for_problem = []
 
-        for z1, z2, z3 in zip(answer_1, answer_2, answer_3):
+        for z1, z2, z3 in zip(*[answer[i] for i in [1, 2, 3]]):
             if z1 == z2:
                 if z2 == z3:
-                    minority_student.append(None)
+                    minority_student_for_problem.append(None)
                 else:
-                    minority_student.append(3)
+                    minority_student_for_problem.append(3)
             elif z1 == z3:
-                minority_student.append(2)
+                minority_student_for_problem.append(2)
             else:
-                minority_student.append(1)
-        # good solutions within each type of problem
-        msc = Counter(minority_student)
+                minority_student_for_problem.append(1)
 
-        numerator = Counter()
+        # We tally the number of times each student was in the minority.
+        msc = Counter(minority_student_for_problem)
+
+        count_weighted_probability = Counter()
         num_total_configurations = 0
 
-        eprint("")
-        eprint(f"minority_student_count: {msc}")
         for x in range(0, msc[None] + 1):
             minority_wrong_count = Counter()
             minority_wrong_count[None] = x
@@ -93,37 +91,49 @@ def get_best_answer_and_score(solutions, num_questions):
                     + msc[i]
                     - 2 * minority_wrong_count[None]
                 ) // 2
-            if any(minority_wrong_count[i] > msc[i] for i in [1, 2, 3]):
+            if not all(0 <= minority_wrong_count[i] <= msc[i] for i in [1, 2, 3]):
                 continue
-            eprint(minority_wrong_count)
             num_possible_choices = prod(
                 ncr(msc[i], minority_wrong_count[i]) for i in msc
             )
             for minority_student, v in minority_wrong_count.items():
-                numerator[minority_student] += num_possible_choices * v
+                if v != 0:
+                    count_weighted_probability[
+                        minority_student
+                    ] += num_possible_choices * Fraction(v, msc[minority_student])
             num_total_configurations += num_possible_choices
 
+        # the probability that the majority choice is correct for a given problem,
+        # indexed by the minority student for that problem
         probability_correct = {
             k: 0
-            if numerator[k] == 0
-            else Fraction(numerator[k], (msc[k] * num_total_configurations))
+            if count_weighted_probability[k] == 0
+            else count_weighted_probability[k] / num_total_configurations
             for k in msc
         }
-        majority_is_correct = {k: v >= 0.5 for k, v in probability_correct.items()}
-        eprint(probability_correct)
 
-        ev_numerator = 0
-        for minority_student in msc:
-            if majority_is_correct[minority_student]:
-                ev_numerator += numerator[minority_student]
+        # the expected value when choosing the most likely option for each problem
+        # (either the majority choice if the probability that is is correct
+        # is no lesser than 0.5, or the minority choice otherwise)
+        expected_value = sum(
+            max(v, 1 - v) * msc[minority_student]
+            for minority_student, v in probability_correct.items()
+        )
+
+        # we also construct the best answer itself, iterating over each of the problems
+        best_answer = []
+        for i, ms in enumerate(minority_student_for_problem):
+            if ms == None:
+                majority_choice = answer[1][i]
             else:
-                ev_numerator += msc[minority_student] * num_total_configurations
-                ev_numerator -= numerator[minority_student]
+                majority_choice = not answer[ms][i]
+            if probability_correct[ms] < 0.5:
+                # flip if probabiliy correct is bad
+                best_answer.append(not majority_choice)
+            else:
+                best_answer.append(majority_choice)
 
-        eprint(ev_numerator)
-        eprint(num_total_configurations)
-        eprint(Fraction(ev_numerator, num_total_configurations))
-        return sorted(solutions, key=lambda x: x[1], reverse=True)[0]
+        return best_answer, expected_value
 
 
 def process(solutions_raw, num_questions):
@@ -137,7 +147,11 @@ def process(solutions_raw, num_questions):
             score = num_questions - score
         solutions.append((answer, score))
     best_answer, best_score = get_best_answer_and_score(solutions, num_questions)
-    r = f"{deconvert(best_answer)} {best_score}/1"
+    best_score = Fraction(best_score, 1)
+    best_score_str = (
+        f"{best_score}/1" if best_score.denominator == 1 else f"{best_score}"
+    )
+    r = f"{deconvert(best_answer)} {best_score_str}"
     return r
 
 
