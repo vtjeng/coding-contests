@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+
+
+from itertools import tee
+from typing import List
+
+
+def pairwise(iterable):
+    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
+
+
+def get_vals(s):
+    return list(map(int, s.strip().split()))
+
+
+def process(case):
+    x, y, s = case.split()
+    x = int(x)
+    y = int(y)
+    chars = list(filter(lambda c: c != "?", s))
+    best_cost = 0
+    for t in pairwise(chars):
+        if t == ("C", "J"):
+            best_cost += x
+        elif t == ("J", "C"):
+            best_cost += y
+    return best_cost
+
+
+num_cases = int(input())
+for i in range(num_cases):
+    print(f"Case #{i+1}: {process(input())}")

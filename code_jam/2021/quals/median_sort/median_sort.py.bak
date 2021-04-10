@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+
+from functools import lru_cache
+
+
+class InvalidQueryError(Exception):
+    pass
+
+
+def get_vals(s):
+    return list(map(int, s.strip().split()))
+
+
+def get_median(xs):
+    return _get_median(*sorted(xs))
+
+
+@lru_cache(maxsize=None)
+def _get_median(a, b, c):
+    xs = [a, b, c]
+    print(" ".join(map(str, xs)))
+    r = int(input())
+    if r == -1:
+        raise InvalidQueryError
+    assert r in xs
+    return r
+
+
+def pivot_sort(indexes):
+    """
+    Parameters
+    ----------
+    indexes : List[Integer]
+    """
+    if len(indexes) < 3:
+        return indexes
+    i1, i2, i3 = indexes[:3]
+    pivot = get_median([i1, i2, i3])
+    if pivot == i1:
+        left = [i2]
+        right = [i3]
+    elif pivot == i2:
+        left = [i1]
+        right = [i3]
+    elif pivot == i3:
+        left = [i1]
+        right = [i2]
+    else:
+        raise AssertionError
+    for i in indexes[3:]:
+        if get_median([left[0], pivot, i]) == pivot:
+            right.append(i)
+        else:
+            left.append(i)
+    left_sorted = pivot_sort(left)
+    right_sorted = pivot_sort(right)
+    if len(left_sorted) > 1:
+        l1, l2 = left_sorted[:2]
+        if get_median([pivot, l1, l2]) == l1:
+            left_sorted = left_sorted[::-1]
+    if len(right_sorted) > 1:
+        r1, r2 = right_sorted[:2]
+        if get_median([pivot, r1, r2]) == r2:
+            right_sorted = right_sorted[::-1]
+    return left_sorted + [pivot] + right_sorted
+
+
+total_cases, n, q = get_vals(input())
+for case in range(total_cases):
+    _get_median.cache_clear()
+    try:
+        sorted_indexes = pivot_sort(list(range(1, n + 1)))
+    except InvalidQueryError:
+        break
+    print(" ".join(map(str, sorted_indexes)))
+    r = input()
+    if r == -1:
+        break
+
+"""
+$ python interactive_runner.py python3 testing_tool.py 0 -- python3 median_sort.py.bak
+judge: Total Queries Used: 1720/30000
+
+$ python interactive_runner.py python3 testing_tool.py 1 -- python3 median_sort.py.bak
+judge: Total Queries Used: 20559/30000
+
+$ python interactive_runner.py python3 testing_tool.py 2 -- python3 median_sort.py.bak
+judge: Case #83 failed: Queried too many times
+"""
