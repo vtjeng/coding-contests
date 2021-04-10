@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 
 
+import sys
+
+# courtesy https://stackoverflow.com/a/14981125/1404966
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+
 def get_vals(s):
     return list(map(int, s.strip().split()))
 
