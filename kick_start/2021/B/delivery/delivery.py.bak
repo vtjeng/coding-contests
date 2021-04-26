@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+
+
+from collections import defaultdict, deque
+from math import gcd
+import sys
+
+# courtesy https://stackoverflow.com/a/14981125/1404966
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+
+def get_vals(s):
+    return list(map(int, s.strip().split()))
+
+
+def process(edges, queries):
+    n = len(edges) + 1
+    adj = defaultdict(list)
+    edge_info = dict()
+    for (x, y, l, a) in edges:
+        adj[x].append(y)
+        adj[y].append(x)
+        edge_info[(x, y)] = (l, a)
+        edge_info[(y, x)] = (l, a)
+    # pad twice for cities 0 and 1
+    parent_l = [None, None]
+    load_limit_l = [None, None]
+    toll_charge_l = [None, None]
+    parents = bfs(adj, 1)
+    # eprint(parents)
+    for city_id in range(2, n + 1):
+        parent_city_id = parents[city_id]
+        parent_l.append(parent_city_id)
+        l, a = edge_info[(city_id, parent_city_id)]
+        load_limit_l.append(l)
+        toll_charge_l.append(a)
+    toll_gcds = []
+    for c, w in queries:
+        cur_city = c
+        toll_gcd = None
+        while parent_l[cur_city] is not None:
+            if w >= load_limit_l[cur_city]:
+                cur_toll = toll_charge_l[cur_city]
+                if toll_gcd is None:
+                    toll_gcd = cur_toll
+                toll_gcd = gcd(toll_gcd, cur_toll)
+            cur_city = parent_l[cur_city]
+        toll_gcds.append(toll_gcd if toll_gcd is not None else 0)
+    return " ".join(map(str, toll_gcds))
+
+
+class setdeque(object):
+    def __init__(self):
+        self.q = deque()
+        self.s = set()
+
+    def __len__(self):
+        return len(self.s)
+
+    def add(self, a):
+        self.q.append(a)
+        self.s.add(a)
+
+    def pop(self):
+        v = self.q.popleft()
+        self.s.remove(v)
+        return v
+
+    def contains(self, v):
+        return v in self.s
+
+
+def bfs(adj, v_source: int):
+    # maps each node to its parent
+    parents = dict()
+    to_visit = setdeque()
+    parents[v_source] = None
+    to_visit.add(v_source)
+    while len(to_visit) > 0:
+        v = to_visit.pop()
+        for u in adj[v]:
+            if u in parents or to_visit.contains(u):
+                continue
+            to_visit.add(u)
+            parents[u] = v
+    return parents
+
+
+## Comment out the appropriate option
+# Option A: Multiple lines per case
+num_cases = int(input())
+for i in range(num_cases):
+    n, q = get_vals(input())
+    edges = []
+    for _ in range(n - 1):
+        edges.append(get_vals(input()))
+    queries = []
+    for _ in range(q):
+        queries.append(get_vals(input()))
+    print(f"Case #{i+1}: {process(edges, queries)}")
