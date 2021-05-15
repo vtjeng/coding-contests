@@ -224,12 +224,6 @@ def decompose(x, min_val=2):
     return best_n
 
 
-eprint(divisors(1147))
-eprint(decompose(1147, 3))
-eprint(decompose(30))
-eprint(decompose(36))
-
-
 def process(x):
     return decompose(x, min_val=3)
 
