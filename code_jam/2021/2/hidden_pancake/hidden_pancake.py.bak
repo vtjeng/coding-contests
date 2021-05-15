@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+
+import functools
+import sys
+from itertools import tee
+from collections import defaultdict
+
+MOD = 1000000007
+
+MOD_FACTORIALS = [1]
+MOD_INV_FACTORIALS = [1]
+
+for i in range(1, int(10 ** 5)):
+    MOD_FACTORIALS.append(MOD_FACTORIALS[-1] * i % MOD)
+    MOD_INV_FACTORIALS.append(MOD_INV_FACTORIALS[-1] * pow(i, MOD - 2, MOD) % MOD)
+
+
+def pairwise(iterable):
+    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
+
+
+@functools.lru_cache(maxsize=None)
+def multinomial(xs):
+    c = MOD_FACTORIALS[sum(xs)]
+    for x in xs:
+        c *= MOD_INV_FACTORIALS[x]
+        c = c % MOD
+    return c
+
+
+# courtesy https://stackoverflow.com/a/14981125/1404966
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+
+def get_vals(s):
+    return list(map(int, s.strip().split()))
+
+
+def p_to_c(parents):
+    children = defaultdict(list)
+    for child, parent in parents.items():
+        children[parent].append(child)
+        # touch the child
+        children[child]
+    return children
+
+
+def get_subtree_size(children):
+    @functools.lru_cache(maxsize=None)
+    def _helper(node):
+        # if node not in children:
+        # return 1
+        return 1 + sum(_helper(c_node) for c_node in children[node])
+
+    return {node: _helper(node) for node in children}
+
+
+def get_count(children):
+    subtree_size = get_subtree_size(children)
+    count = 1
+    for _, kids in children.items():
+        if len(kids) <= 1:
+            continue
+        count *= multinomial(tuple(sorted([subtree_size[kid] for kid in kids])))
+        count = count % MOD
+    return count
+
+
+def process(visible_counts):
+    visibles_sorted = []
+    parents = dict()
+    for idx, c in enumerate(visible_counts):
+        if c > len(visibles_sorted) + 1:
+            # can add only 1 pancake, but visible count increased by more than 1
+            return 0
+        if c < len(visibles_sorted) + 1:
+            # the pancake immediately smaller needs to have its parent re-specified
+            parents[visibles_sorted[c - 1]] = idx
+        if c == 1:
+            parents[idx] = None
+        else:
+            # eprint((visibles_sorted, c - 2))
+            parents[idx] = visibles_sorted[c - 2]
+        visibles_sorted = visibles_sorted[: c - 1] + [idx]
+    children = p_to_c(parents)
+    # eprint(children)
+    # subtree_size = get_subtree_size(children)
+    # eprint(subtree_size)
+    return get_count(children)
+
+
+## Comment out the appropriate option
+# Option A: Multiple lines per case
+num_cases = int(input())
+for i in range(num_cases):
+    n = int(input())
+    visible_counts = get_vals(input())
+    print(f"Case #{i+1}: {process(visible_counts)}")
+
